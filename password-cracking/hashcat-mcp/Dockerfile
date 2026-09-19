@@ -24,6 +24,11 @@ RUN git clone --depth 1 https://github.com/MorDavid/hashcat-mcp.git /tmp/hashcat
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Upstream requirements.txt doesn't pin mcp, so it installs mcp 2.x by
+# default — but hashcat_mcp_server.py imports mcp.server.fastmcp.FastMCP,
+# removed in mcp 2.x (verified: ModuleNotFoundError at startup). Pin to 1.x.
+RUN pip install --no-cache-dir "mcp>=1.0.0,<2.0.0"
+
 # Create wordlists directory
 RUN mkdir -p /app/wordlists
 

@@ -19,6 +19,11 @@ RUN git clone --depth 1 https://github.com/mrwadams/otx-mcp.git . && \
     pip install --no-cache-dir -r requirements.txt && \
     chown -R mcpuser:mcpuser /app
 
+# Upstream requirements.txt doesn't pin mcp, so it installs mcp 2.x by
+# default — but main.py imports mcp.server.fastmcp.FastMCP, removed in
+# mcp 2.x (verified: ModuleNotFoundError at startup). Pin back to 1.x.
+RUN pip install --no-cache-dir "mcp>=1.0.0,<2.0.0"
+
 USER mcpuser
 
 ENV OTX_API_KEY=

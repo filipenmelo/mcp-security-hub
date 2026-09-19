@@ -13,7 +13,9 @@ RUN addgroup -g 1000 mcpuser && \
 
 RUN apk add --no-cache tini
 
-RUN pip install --no-cache-dir mcp-scan
+# Pinned to the last release before the mcp-scan -> snyk-agent-scan rebrand
+# (0.4+ requires a SNYK_TOKEN and forwards to Snyk's cloud service)
+RUN pip install --no-cache-dir mcp-scan==0.3.39
 
 USER mcpuser
 

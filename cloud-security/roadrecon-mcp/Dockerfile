@@ -20,6 +20,12 @@ RUN git clone --depth 1 https://github.com/atomicchonk/roadrecon_mcp_server.git 
     pip install --no-cache-dir roadrecon && \
     chown -R mcpuser:mcpuser /app
 
+# The upstream repo's requirements.txt doesn't pin mcp, so pip installs the
+# latest mcp 2.x by default — but roadrecon_mcp_server.py imports
+# mcp.server.fastmcp.FastMCP, which was renamed/removed in mcp 2.x (verified:
+# ModuleNotFoundError at startup). Pin back to the last 1.x release.
+RUN pip install --no-cache-dir "mcp>=1.0.0,<2.0.0"
+
 USER mcpuser
 
 ENV ROADRECON_URL=http://localhost:5000

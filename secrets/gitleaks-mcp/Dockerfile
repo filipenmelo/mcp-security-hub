@@ -19,7 +19,7 @@ RUN apk add --no-cache \
     && rm -rf /var/cache/apk/*
 
 # Install Gitleaks from releases
-ARG GITLEAKS_VERSION=8.30.0
+ARG GITLEAKS_VERSION=8.30.1
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then ARCH="x64"; fi && \
     if [ "$ARCH" = "aarch64" ]; then ARCH="arm64"; fi && \

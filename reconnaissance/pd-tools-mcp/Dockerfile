@@ -21,8 +21,13 @@ RUN apk add --no-cache \
     build-base \
     && rm -rf /var/cache/apk/*
 
-# Set Go environment
+# Set Go environment. GOTOOLCHAIN=auto lets `go install pkg@latest` fetch a
+# newer Go toolchain on demand — needed because Alpine's packaged Go (here
+# 1.25.10) lags behind what @latest ProjectDiscovery releases require (e.g.
+# httpx v1.12.0 needs go>=1.26.0); without this it fails hard instead of
+# self-upgrading.
 ENV GOPATH=/home/node/go
+ENV GOTOOLCHAIN=auto
 ENV PATH=$PATH:$GOPATH/bin
 
 # Switch to non-root user for Go installations

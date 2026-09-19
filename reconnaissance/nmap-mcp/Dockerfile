@@ -32,6 +32,9 @@ COPY --chown=mcpuser:mcpuser requirements.txt ./
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install Python Setup Tools e MSGPack
+RUN pip install --no-cache-dir --upgrade pip==26.2.0 setuptools==83.0.0 msgpack==1.2.1
+
 # Copy application files
 COPY --chown=mcpuser:mcpuser . .
 
@@ -59,3 +62,4 @@ ENTRYPOINT ["/sbin/tini", "--"]
 
 # Start MCP server
 CMD ["python", "server.py"]
+

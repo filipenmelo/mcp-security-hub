@@ -19,18 +19,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Prowler
+# Install Prowler in its own venv, isolated from the MCP server's
+# dependencies. prowler==4.3.0 hard-pins pydantic==1.10.15, while the MCP
+# library below requires pydantic>=2 — installing both into the same
+# site-packages breaks prowler's schema generation at runtime (verified:
+# `prowler --version` crashes with PydanticSchemaGenerationError). The venv's
+# bin/ is added to PATH so the bare `prowler` command still resolves, but its
+# shebang pins it to this venv's own interpreter and dependencies.
 ARG PROWLER_VERSION=4.3.0
-RUN pip install --no-cache-dir prowler==${PROWLER_VERSION}
+RUN python3 -m venv /opt/prowler-venv && \
+    /opt/prowler-venv/bin/pip install --no-cache-dir prowler==${PROWLER_VERSION}
 
-# Verify prowler installation
-RUN prowler --version
+# Verify prowler installation (isolated venv, PATH not modified yet)
+RUN /opt/prowler-venv/bin/prowler --version
 
 WORKDIR /app
 
 COPY --chown=mcpuser:mcpuser requirements.txt ./
 
+# Uses the base image's pip, not the prowler venv's — the two dependency
+# trees must never share a site-packages.
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Expose only the `prowler` binary on PATH (not the whole venv bin/, which
+# would also shadow `python`/`pip` and break the main app's own imports).
+# The symlink's target has its own shebang, so it still runs fully isolated.
+RUN ln -s /opt/prowler-venv/bin/prowler /usr/local/bin/prowler
 
 COPY --chown=mcpuser:mcpuser . .
 

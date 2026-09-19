@@ -20,7 +20,7 @@ RUN apk add --no-cache \
     && rm -rf /var/cache/apk/*
 
 # Install Nuclei from ProjectDiscovery releases
-ARG NUCLEI_VERSION=3.7.0
+ARG NUCLEI_VERSION=3.11.1
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then ARCH="amd64"; fi && \
     if [ "$ARCH" = "aarch64" ]; then ARCH="arm64"; fi && \
