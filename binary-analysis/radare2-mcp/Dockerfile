@@ -1,74 +1,46 @@
 # Radare2 MCP Server
-# Wrapper around official radareorg/radare2-mcp
-# https://github.com/radareorg/radare2-mcp
+# Curated, read-only binary analysis via radare2 (sandboxed batch mode).
+# In-house Python server (not the upstream C r2mcp) to match the audited
+# yara-mcp pattern: vectorized subprocess, no shell=True, non-root.
 
-FROM alpine:3.19 AS builder
+FROM python:3.12-alpine
 
-RUN apk add --no-cache \
-    git \
-    build-base \
-    meson \
-    ninja \
-    pkgconfig \
-    linux-headers \
-    python3
-
-# Clone and build radare2 with proper prefix install
-RUN git clone --depth 1 https://github.com/radareorg/radare2.git /tmp/radare2 && \
-    cd /tmp/radare2 && \
-    meson setup build --prefix=/opt/radare2 --buildtype=release && \
-    ninja -C build && \
-    ninja -C build install
-
-# Set up environment for r2pm
-ENV PATH="/opt/radare2/bin:$PATH"
-ENV PKG_CONFIG_PATH="/opt/radare2/lib/pkgconfig"
-ENV LD_LIBRARY_PATH="/opt/radare2/lib"
-ENV R2_LIBDIR="/opt/radare2/lib"
-
-# Verify radare2 works
-RUN r2 -v
-
-# Install r2mcp via r2pm
-RUN r2pm -Uci r2mcp
-
-FROM alpine:3.19
-
-LABEL org.opencontainers.image.source="https://github.com/FuzzingLabs/offensive-security-mcps"
-LABEL org.opencontainers.image.description="Radare2 MCP Server - Official radareorg/radare2-mcp"
+LABEL org.opencontainers.image.source="https://github.com/filipenmelo/mcp-security-hub"
+LABEL org.opencontainers.image.description="Radare2 MCP Server - sandboxed binary analysis"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL upstream.repo="https://github.com/radareorg/radare2-mcp"
 
-# Security: Create non-root user
+# Security: non-root user
 RUN addgroup -g 1000 mcpuser && \
     adduser -D -u 1000 -G mcpuser mcpuser
 
+# radare2 lives in the Alpine community repo
 RUN apk add --no-cache \
     ca-certificates \
     tini \
-    libgcc \
-    libstdc++
+    radare2 \
+    && rm -rf /var/cache/apk/*
 
-# Copy radare2 installation from builder
-COPY --from=builder /opt/radare2 /opt/radare2
-COPY --from=builder /root/.local/share/radare2 /home/mcpuser/.local/share/radare2
+# Verify radare2 is present
+RUN r2 -v
 
-# Set up user environment
-RUN chown -R mcpuser:mcpuser /home/mcpuser
+WORKDIR /app
 
-WORKDIR /home/mcpuser
+COPY --chown=mcpuser:mcpuser requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY --chown=mcpuser:mcpuser . .
+
+RUN mkdir -p /home/mcpuser/samples && chown -R mcpuser:mcpuser /home/mcpuser /app
 
 USER mcpuser
 
-# Sample binaries directory
-RUN mkdir -p /home/mcpuser/samples
-
-ENV PATH="/home/mcpuser/.local/share/radare2/prefix/bin:/opt/radare2/bin:$PATH"
-ENV LD_LIBRARY_PATH="/opt/radare2/lib"
-ENV R2_LIBDIR="/opt/radare2/lib"
+ENV R2_SAMPLES_DIR=/home/mcpuser/samples
+ENV R2_TIMEOUT=180
+ENV R2_MAX_CONCURRENT=2
+ENV PYTHONUNBUFFERED=1
 
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD r2 -v > /dev/null || exit 1
+    CMD pgrep -f "python.*server.py" > /dev/null || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["r2mcp"]
+CMD ["python", "server.py"]
